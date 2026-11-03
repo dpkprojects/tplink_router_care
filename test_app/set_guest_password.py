@@ -3,10 +3,14 @@
 
 Same logic as the integration's "New guest 5 GHz password" button:
   1. GET:  read the password currently set on the router;
-  2. SET:  write the new key to the guest_5g form; if the router ignores it
-           (routers like the Archer AXE75 keep one shared key for 2.4 + 5 GHz
-           guest), write it to the shared guest_2g5g form instead;
-  3. VERIFY: read the password back from the router and compare.
+  2. SET:  write the new key to the shared guest_2g5g form first (routers like
+           the Archer AXE75 keep one key for 2.4 + 5 GHz guest, and that's the
+           one the web UI shows and the radio uses); fall back to guest_5g;
+  3. VERIFY: read guest_5g AND guest_2g5g back from the router; both must match.
+
+Note: on shared-key routers guest_5g can echo back a value written to it even
+though the active key (guest_2g5g) is unchanged, so checking guest_5g alone
+is not enough.
 
 Usage:
     python set_guest_password.py 192.168.0.1                 # random 8-char password
@@ -74,21 +78,36 @@ def connect(host: str, username: str, admin_password: str, client: str | None, l
     )
 
 
-def set_guest_5g_password(router, password: str) -> bool:
-    """Try guest_5g, then guest_2g5g; True once guest_5g reads back the new key."""
-    forms = (GUEST_5G_FORM, GUEST_2G5G_FORM)
+def read_shared_key(router) -> str | None:
+    """psk_key of the shared guest_2g5g form, or None if the router has no such form."""
+    try:
+        return read_form(router, GUEST_2G5G_FORM).get("psk_key")
+    except Exception:  # noqa: BLE001 - form doesn't exist on this model
+        return None
+
+
+def keys_applied(router, password: str, has_shared: bool) -> bool:
+    if read_form(router, GUEST_5G_FORM).get("psk_key") != password:
+        return False
+    return not has_shared or read_shared_key(router) == password
+
+
+def set_guest_5g_password(router, password: str, has_shared: bool) -> bool:
+    """Write guest_2g5g, then guest_5g, until every guest key reads back as new."""
+    forms = (GUEST_2G5G_FORM, GUEST_5G_FORM)
     for i, form in enumerate(forms):
         last = i == len(forms) - 1
         tag = "  [FAIL]" if last else "  [SKIP]"
         try:
             write_key(router, form, password)
+            print(f"  [..] Wrote key to {form}", flush=True)
         except Exception as err:  # noqa: BLE001 - library raises bare Exception
             print(f"{tag} Write to {form} rejected: {err}", flush=True)
             continue
-        if read_form(router, GUEST_5G_FORM).get("psk_key") == password:
+        if keys_applied(router, password, has_shared):
             step(True, f"Password applied via {form}")
             return True
-        print(f"{tag} {form} did not take the key", flush=True)
+        print(f"{tag} After writing {form} the router still reports an old key", flush=True)
     return False
 
 
@@ -149,9 +168,13 @@ def main() -> int:
         if not before:
             step(False, "Router did not return the guest_5g form")
             return 1
+        shared_before = read_shared_key(router)
+        has_shared = shared_before is not None
         print(f"    SSID      {before.get('ssid')}")
         print(f"    Enabled   {before.get('enable')}")
-        print(f"    Password  {before.get('psk_key')}")
+        print(f"    Password  {before.get('psk_key')}  (guest_5g form)")
+        if has_shared:
+            print(f"    Password  {shared_before}  (shared guest_2g5g form, used by web UI)")
         try:
             before_2g = read_form(router, GUEST_2G_FORM).get("psk_key")
         except Exception:  # noqa: BLE001 - informational only
@@ -159,9 +182,9 @@ def main() -> int:
 
         # 2. SET
         print(f"\n2. Setting new password: {new_password}")
-        if before.get("psk_key") == new_password:
+        if keys_applied(router, new_password, has_shared):
             step(True, "Router already has this password; nothing to change")
-        elif not set_guest_5g_password(router, new_password):
+        elif not set_guest_5g_password(router, new_password, has_shared):
             print("\nPassword was NOT changed. Re-run with --debug to see router responses.")
             return 1
 
@@ -169,10 +192,13 @@ def main() -> int:
         print("\n3. Password now on the router (read back)")
         after = read_form(router, GUEST_5G_FORM)
         current = after.get("psk_key")
+        shared_after = read_shared_key(router) if has_shared else None
         print(f"    SSID      {after.get('ssid')}")
-        print(f"    Password  {current}")
-        if current != new_password:
-            step(False, f"Router reports {current!r}, expected {new_password!r}")
+        print(f"    Password  {current}  (guest_5g form)")
+        if has_shared:
+            print(f"    Password  {shared_after}  (shared guest_2g5g form, used by web UI)")
+        if current != new_password or (has_shared and shared_after != new_password):
+            step(False, f"Router still reports an old key, expected {new_password!r}")
             return 1
         step(True, "Router confirms the new password")
         try:

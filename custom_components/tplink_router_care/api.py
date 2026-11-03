@@ -203,17 +203,21 @@ class RouterApi:
     def set_guest_5g_password(self, password: str) -> GuestWifi:
         """Set the 5 GHz guest network password; returns the new state.
 
-        Tries the 5 GHz form alone first. Routers such as the Archer AXE75 keep
-        one shared key for 2.4 + 5 GHz guest and ignore a 5 GHz-only write; for
-        those, fall back to the shared guest_2g5g form (which necessarily
-        changes the 2.4 GHz guest password too).
+        Routers such as the Archer AXE75 keep one shared key for 2.4 + 5 GHz
+        guest in the guest_2g5g form; that's the key the radio uses and the web
+        UI shows. guest_5g can echo back a value written to it while the shared
+        key stays unchanged, so: write guest_2g5g first (falling back to
+        guest_5g on routers without it) and only succeed once guest_5g AND the
+        shared form (if present) both read back the new key. On shared-key
+        routers this necessarily changes the 2.4 GHz guest password too.
         """
         if not 8 <= len(password) <= 63:
             raise ValueError("Wi-Fi password must be 8-63 characters")
         data = f"operation=write&psk_key={quote(password, safe='')}"
         return self._write_guest_5g(
-            [(GUEST_5G_FORM, data), (GUEST_2G5G_FORM, data)],
+            [(GUEST_2G5G_FORM, data), (GUEST_5G_FORM, data)],
             lambda guest: guest.password == password,
+            shared_applied=lambda info: info.get("psk_key") == password,
         )
 
     # ------------------------------------------------------------------ #
@@ -245,12 +249,30 @@ class RouterApi:
             password=info.get("psk_key"),
         )
 
+    @staticmethod
+    def _read_shared_guest(router: AbstractRouter) -> dict | None:
+        """The shared guest_2g5g form, or None if this router doesn't have it."""
+        try:
+            info = router.request(
+                f"admin/wireless?form={GUEST_2G5G_FORM}", "operation=read"
+            )
+        except requests.exceptions.RequestException as err:
+            raise RouterConnectionError(str(err)) from err
+        except Exception:  # noqa: BLE001 - form doesn't exist on this model
+            return None
+        return info if isinstance(info, dict) and info else None
+
     def _write_guest_5g(
         self,
         attempts: list[tuple[str, str]],
         applied: Callable[[GuestWifi], bool],
+        shared_applied: Callable[[dict], bool] | None = None,
     ) -> GuestWifi:
-        """Try each (form, data) write in turn until guest_5g reads back as applied."""
+        """Try each (form, data) write in turn until the change reads back as applied.
+
+        guest_5g must satisfy ``applied``; if ``shared_applied`` is given and
+        the router has a shared guest_2g5g form, that form must satisfy it too.
+        """
         with self._locked():
             router = self._new_client()
             if getattr(router, "request", None) is None:
@@ -260,6 +282,10 @@ class RouterApi:
             self._authorize(router)
             problems: list[str] = []
             try:
+                has_shared = (
+                    shared_applied is not None
+                    and self._read_shared_guest(router) is not None
+                )
                 for form, data in attempts:
                     try:
                         response = router.request(f"admin/wireless?form={form}", data)
@@ -278,9 +304,16 @@ class RouterApi:
                     except Exception as err:  # noqa: BLE001
                         raise RouterError(f"Could not read back guest Wi-Fi: {err}") from err
                     _LOGGER.debug("guest_5g after writing %s: %s", form, guest)
-                    if guest is not None and applied(guest):
-                        return guest
-                    problems.append(f"{form}: write accepted but not applied")
+                    if guest is None or not applied(guest):
+                        problems.append(f"{form}: guest_5g not updated")
+                        continue
+                    if has_shared and shared_applied is not None:
+                        shared = self._read_shared_guest(router)
+                        _LOGGER.debug("guest_2g5g after writing %s: %s", form, shared)
+                        if shared is None or not shared_applied(shared):
+                            problems.append(f"{form}: shared guest_2g5g key not updated")
+                            continue
+                    return guest
 
                 raise RouterError(
                     "Router did not apply the guest Wi-Fi change ("

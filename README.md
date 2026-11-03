@@ -27,9 +27,9 @@ same IP and password.
 .venv/bin/python test_app/set_guest_password.py 192.168.0.1 --client TplinkRouter  # skip model detection
 ```
 
-It uses the same logic as the integration's **New guest 5 GHz password** button: it tries the
-5 GHz guest form first and falls back to the shared 2.4 + 5 GHz form, then reads the password
-back to confirm it was applied.
+It uses the same logic as the integration's **New guest 5 GHz password** button. It shows the
+current password, writes the new one to the shared 2.4 + 5 GHz guest form (falling back to the
+5 GHz form on routers without one), then reads both forms back to confirm the router applied it.
 
 ## 2. Install the integration
 

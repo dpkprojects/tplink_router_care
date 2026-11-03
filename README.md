@@ -21,8 +21,24 @@ same IP and password.
 
 ## 2. Install the integration
 
+### With HACS (recommended)
+
+1. In Home Assistant, open **HACS**, click the **⋮** menu (top right) and choose **Custom
+   repositories**.
+2. Add `https://github.com/dpkprojects/tplink_router_care` with type **Integration**.
+3. Search HACS for **TP-Link Router Care**, open it and click **Download**.
+4. Restart Home Assistant.
+
+HACS will then offer updates whenever a new release is published.
+
+### Manually
+
 Copy `custom_components/tplink_router_care` into your Home Assistant `config/custom_components/`
-folder and restart Home Assistant. Then go to **Settings → Devices & Services → Add Integration →
+folder and restart Home Assistant.
+
+### Set it up
+
+Go to **Settings → Devices & Services → Add Integration →
 TP-Link Router Care** and enter:
 
 | Field | Notes |
@@ -40,7 +56,18 @@ in turn. The model it finds is saved, so later polls skip this step.
 - **Connected / Wi-Fi / Wired / Guest clients** sensors.
 - **CPU usage, Memory usage, WAN IP address, WAN uptime** (diagnostic). These are created only if
   your router reports them.
+- **Refresh data** button. Polls the router immediately, for when you want fresh metrics without
+  waiting for the hourly poll.
 - **Restart** button.
+- **Guest Wi-Fi 5 GHz** switch. Turns the 5 GHz guest network on and off.
+- **New guest 5 GHz password** button. Sets a random 8-character password (letters and digits) on
+  the 5 GHz guest network.
+- **Guest 5 GHz password** and **Guest 5 GHz SSID** sensors. Show the current guest password and
+  network name, so you can read them off the device page.
+
+The guest entities are created only if the router exposes the `guest_5g` wireless form (Archer
+AXE75 / AXE5400 and similar). Password changes are read back from the router before they're
+shown, so the sensor always reflects what the router actually stored.
 
 The integration polls once an hour. Each poll logs in, reads the data and logs out.
 

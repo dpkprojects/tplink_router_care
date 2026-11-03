@@ -1,0 +1,28 @@
+{
+  "entity": {
+    "button": {
+      "refresh": {
+        "default": "mdi:refresh"
+      },
+      "guest_5g_new_password": {
+        "default": "mdi:key-change"
+      }
+    },
+    "sensor": {
+      "guest_5g_password": {
+        "default": "mdi:key-wireless"
+      },
+      "guest_5g_ssid": {
+        "default": "mdi:wifi"
+      }
+    },
+    "switch": {
+      "guest_5g": {
+        "default": "mdi:wifi-off",
+        "state": {
+          "on": "mdi:wifi"
+        }
+      }
+    }
+  }
+}

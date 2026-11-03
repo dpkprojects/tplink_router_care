@@ -36,17 +36,54 @@
   },
   "entity": {
     "binary_sensor": {
-      "router_reachable": { "name": "Router reachable" }
+      "router_reachable": {
+        "name": "Router reachable"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Refresh data"
+      },
+      "guest_5g_new_password": {
+        "name": "New guest 5 GHz password"
+      }
     },
     "sensor": {
-      "clients_total": { "name": "Connected clients" },
-      "wifi_clients_total": { "name": "Wi-Fi clients" },
-      "wired_clients_total": { "name": "Wired clients" },
-      "guest_clients_total": { "name": "Guest clients" },
-      "cpu_usage": { "name": "CPU usage" },
-      "memory_usage": { "name": "Memory usage" },
-      "wan_ip": { "name": "WAN IP address" },
-      "wan_uptime": { "name": "WAN uptime" }
+      "clients_total": {
+        "name": "Connected clients"
+      },
+      "wifi_clients_total": {
+        "name": "Wi-Fi clients"
+      },
+      "wired_clients_total": {
+        "name": "Wired clients"
+      },
+      "guest_clients_total": {
+        "name": "Guest clients"
+      },
+      "guest_5g_password": {
+        "name": "Guest 5 GHz password"
+      },
+      "guest_5g_ssid": {
+        "name": "Guest 5 GHz SSID"
+      },
+      "cpu_usage": {
+        "name": "CPU usage"
+      },
+      "memory_usage": {
+        "name": "Memory usage"
+      },
+      "wan_ip": {
+        "name": "WAN IP address"
+      },
+      "wan_uptime": {
+        "name": "WAN uptime"
+      }
+    },
+    "switch": {
+      "guest_5g": {
+        "name": "Guest Wi-Fi 5 GHz"
+      }
     }
   }
 }

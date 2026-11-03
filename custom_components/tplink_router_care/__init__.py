@@ -9,7 +9,12 @@ from .api import RouterApi
 from .const import CONF_CLIENT_CLASS, DEFAULT_USERNAME
 from .coordinator import RouterConfigEntry, RouterCoordinator
 
-PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.BUTTON, Platform.SENSOR]
+PLATFORMS: list[Platform] = [
+    Platform.BINARY_SENSOR,
+    Platform.BUTTON,
+    Platform.SENSOR,
+    Platform.SWITCH,
+]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: RouterConfigEntry) -> bool:

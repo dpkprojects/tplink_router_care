@@ -61,6 +61,18 @@ SENSORS: tuple[RouterSensorDescription, ...] = (
         value_fn=lambda d: d.status.guest_clients_total,
     ),
     RouterSensorDescription(
+        key="guest_5g_password",
+        translation_key="guest_5g_password",
+        value_fn=lambda d: d.guest_5g.password,
+        optional=True,
+    ),
+    RouterSensorDescription(
+        key="guest_5g_ssid",
+        translation_key="guest_5g_ssid",
+        value_fn=lambda d: d.guest_5g.ssid,
+        optional=True,
+    ),
+    RouterSensorDescription(
         key="cpu_usage",
         translation_key="cpu_usage",
         native_unit_of_measurement=PERCENTAGE,

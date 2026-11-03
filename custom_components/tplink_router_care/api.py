@@ -7,11 +7,14 @@ called from the Home Assistant event loop directly; always go through
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 import logging
+import secrets
+import string
 import threading
+from urllib.parse import quote
 
 import requests
 from tplinkrouterc6u import (
@@ -23,7 +26,7 @@ from tplinkrouterc6u import (
     TplinkRouterProvider,
 )
 
-from .const import LOCK_TIMEOUT, REQUEST_TIMEOUT
+from .const import GUEST_5G_FORM, GUEST_PASSWORD_LENGTH, LOCK_TIMEOUT, REQUEST_TIMEOUT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,12 +51,36 @@ class RouterBusyError(RouterError):
     """Another operation (possibly a timed-out one) still holds the router."""
 
 
+@dataclass(slots=True, frozen=True)
+class GuestWifi:
+    """State of one guest Wi-Fi band."""
+
+    ssid: str | None
+    enabled: bool
+    password: str | None
+
+
 @dataclass(slots=True)
 class RouterData:
     """Snapshot of router state from one poll."""
 
     firmware: Firmware | None
     status: Status
+    # None if the router doesn't expose the guest_5g form (or reading it failed).
+    guest_5g: GuestWifi | None = None
+
+
+def generate_password(length: int = GUEST_PASSWORD_LENGTH) -> str:
+    """Random letters + digits, with at least one of each.
+
+    Letters and digits only: easy to type and nothing needs escaping in the
+    router request or a Wi-Fi QR code.
+    """
+    alphabet = string.ascii_letters + string.digits
+    while True:
+        password = "".join(secrets.choice(alphabet) for _ in range(length))
+        if any(c.isalpha() for c in password) and any(c.isdigit() for c in password):
+            return password
 
 
 def normalize_host(host: str) -> str:
@@ -160,6 +187,22 @@ class RouterApi:
                 raise RouterError(f"Reboot failed: {err}") from err
             # No logout: the router is going down.
 
+    def set_guest_5g_enabled(self, enable: bool) -> GuestWifi:
+        """Turn the 5 GHz guest network on or off; returns the new state."""
+        return self._write_guest_5g(
+            f"operation=write&enable={'on' if enable else 'off'}",
+            lambda guest: guest.enabled == enable,
+        )
+
+    def set_guest_5g_password(self, password: str) -> GuestWifi:
+        """Set the 5 GHz guest network password; returns the new state."""
+        if not 8 <= len(password) <= 63:
+            raise ValueError("Wi-Fi password must be 8-63 characters")
+        return self._write_guest_5g(
+            f"operation=write&psk_key={quote(password, safe='')}",
+            lambda guest: guest.password == password,
+        )
+
     # ------------------------------------------------------------------ #
 
     def _authorize(self, router: AbstractRouter) -> None:
@@ -172,6 +215,52 @@ class RouterApi:
         except ClientException as err:
             raise RouterError(str(err)) from err
 
+    @staticmethod
+    def _read_guest_5g(router: AbstractRouter) -> GuestWifi | None:
+        """Read the guest_5g wireless form. Raises on request errors."""
+        request = getattr(router, "request", None)
+        if request is None:
+            # Client class without the LuCI request API (not a router that has
+            # this form).
+            return None
+        info = request(f"admin/wireless?form={GUEST_5G_FORM}", "operation=read")
+        if not isinstance(info, dict):
+            return None
+        return GuestWifi(
+            ssid=info.get("ssid"),
+            enabled=info.get("enable") == "on",
+            password=info.get("psk_key"),
+        )
+
+    def _write_guest_5g(
+        self, data: str, applied: Callable[[GuestWifi], bool]
+    ) -> GuestWifi:
+        """Write to the guest_5g form, then read it back to confirm."""
+        with self._locked():
+            router = self._new_client()
+            if getattr(router, "request", None) is None:
+                raise RouterUnsupportedError(
+                    "This router model does not support guest Wi-Fi control"
+                )
+            self._authorize(router)
+            try:
+                router.request(f"admin/wireless?form={GUEST_5G_FORM}", data)
+                guest = self._read_guest_5g(router)
+                if guest is None or not applied(guest):
+                    raise RouterError("Router did not apply the guest Wi-Fi change")
+                return guest
+            except RouterError:
+                raise
+            except requests.exceptions.RequestException as err:
+                raise RouterConnectionError(str(err)) from err
+            except Exception as err:  # noqa: BLE001 - library raises bare Exception
+                raise RouterError(f"Guest Wi-Fi change failed: {err}") from err
+            finally:
+                try:
+                    router.logout()
+                except Exception:  # noqa: BLE001
+                    _LOGGER.debug("Logout failed", exc_info=True)
+
     def _run_session(self, router: AbstractRouter, *, fetch_status: bool) -> RouterData:
         self._authorize(router)
         try:
@@ -181,7 +270,13 @@ class RouterApi:
                 except Exception:  # noqa: BLE001 - firmware is optional info
                     _LOGGER.debug("Could not read firmware info", exc_info=True)
             status = router.get_status() if fetch_status else Status()
-            return RouterData(firmware=self._firmware, status=status)
+            guest_5g = None
+            if fetch_status:
+                try:
+                    guest_5g = self._read_guest_5g(router)
+                except Exception:  # noqa: BLE001 - guest info is optional
+                    _LOGGER.debug("Could not read guest 5 GHz Wi-Fi", exc_info=True)
+            return RouterData(firmware=self._firmware, status=status, guest_5g=guest_5g)
         except requests.exceptions.RequestException as err:
             raise RouterConnectionError(str(err)) from err
         except ClientException as err:

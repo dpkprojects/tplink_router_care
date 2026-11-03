@@ -8,6 +8,9 @@ DOMAIN: Final = "tplink_router_care"
 CONF_CLIENT_CLASS: Final = "client_class"
 
 DEFAULT_USERNAME: Final = "admin"
+# LuCI wireless form for the 5 GHz guest network (admin/wireless?form=...).
+GUEST_5G_FORM: Final = "guest_5g"
+GUEST_PASSWORD_LENGTH: Final = 8
 DEFAULT_SCAN_INTERVAL: Final = timedelta(hours=1)
 
 # Per-HTTP-request timeout handed to the library (seconds).

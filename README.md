@@ -19,6 +19,18 @@ same IP and password.
 
 > Log out of the router's web UI first. Most TP-Link routers allow only one admin session.
 
+### Change the guest 5 GHz password from the command line
+
+```bash
+.venv/bin/python test_app/set_guest_password.py 192.168.0.1                # random 8-char password
+.venv/bin/python test_app/set_guest_password.py 192.168.0.1 MyNewPass123   # specific password
+.venv/bin/python test_app/set_guest_password.py 192.168.0.1 --client TplinkRouter  # skip model detection
+```
+
+It uses the same logic as the integration's **New guest 5 GHz password** button: it tries the
+5 GHz guest form first and falls back to the shared 2.4 + 5 GHz form, then reads the password
+back to confirm it was applied.
+
 ## 2. Install the integration
 
 ### With HACS (recommended)

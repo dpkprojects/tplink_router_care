@@ -3,7 +3,6 @@
   "name": "TP-Link Router Care",
   "codeowners": [],
   "config_flow": true,
-  "documentation": "https://github.com/AlexandrErohin/TP-Link-Archer-C6U",
   "integration_type": "device",
   "iot_class": "local_polling",
   "loggers": ["tplinkrouterc6u"],

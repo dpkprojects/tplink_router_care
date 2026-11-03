@@ -7,6 +7,8 @@ called from the Home Assistant event loop directly; always go through
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 import logging
 import threading
@@ -21,7 +23,7 @@ from tplinkrouterc6u import (
     TplinkRouterProvider,
 )
 
-from .const import REQUEST_TIMEOUT
+from .const import LOCK_TIMEOUT, REQUEST_TIMEOUT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,6 +42,10 @@ class RouterAuthError(RouterError):
 
 class RouterUnsupportedError(RouterError):
     """No client in the library could talk to this router."""
+
+
+class RouterBusyError(RouterError):
+    """Another operation (possibly a timed-out one) still holds the router."""
 
 
 @dataclass(slots=True)
@@ -86,6 +92,18 @@ class RouterApi:
     # Blocking helpers (run in executor only)
     # ------------------------------------------------------------------ #
 
+    @contextmanager
+    def _locked(self) -> Iterator[None]:
+        """Hold the router lock, but never wait for it indefinitely."""
+        if not self._lock.acquire(timeout=LOCK_TIMEOUT):
+            raise RouterBusyError(
+                "Router is still busy with a previous request; will retry"
+            )
+        try:
+            yield
+        finally:
+            self._lock.release()
+
     def _new_client(self) -> AbstractRouter:
         clients = TplinkRouterProvider.get_clients()
         cls = clients.get(self._client_class or "")
@@ -103,7 +121,7 @@ class RouterApi:
 
         Slow: the library may probe many client implementations in turn.
         """
-        with self._lock:
+        with self._locked():
             try:
                 router = TplinkRouterProvider.get_client(
                     self._host,
@@ -125,12 +143,12 @@ class RouterApi:
 
     def fetch(self) -> RouterData:
         """Log in, read firmware + status, log out."""
-        with self._lock:
+        with self._locked():
             return self._run_session(self._new_client(), fetch_status=True)
 
     def reboot(self) -> None:
         """Log in and reboot the router."""
-        with self._lock:
+        with self._locked():
             router = self._new_client()
             self._authorize(router)
             try:

@@ -14,6 +14,11 @@ DEFAULT_SCAN_INTERVAL: Final = timedelta(seconds=60)
 REQUEST_TIMEOUT: Final = 10
 # Hard ceiling for one full poll cycle (login + fetch + logout).
 UPDATE_TIMEOUT: Final = 45
+# How long a worker thread waits for the router lock before giving up. If an
+# earlier call timed out on the HA side, its thread may still be talking to the
+# router; later calls must not pile up behind it. Keep below UPDATE_TIMEOUT so
+# the waiting thread exits before HA stops waiting for it.
+LOCK_TIMEOUT: Final = 30
 # Hard ceiling for router model auto-detection in the config flow. The library
 # probes ~30 client classes one after another, so this needs headroom.
 DETECT_TIMEOUT: Final = 180

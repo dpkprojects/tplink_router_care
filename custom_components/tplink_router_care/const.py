@@ -6,6 +6,10 @@ from typing import Final
 DOMAIN: Final = "tplink_router_care"
 
 CONF_CLIENT_CLASS: Final = "client_class"
+# Options
+CONF_QR_THEME: Final = "qr_theme"
+QR_THEMES: Final = ["light", "dark"]
+DEFAULT_QR_THEME: Final = "light"
 
 DEFAULT_USERNAME: Final = "admin"
 # LuCI wireless form for the 5 GHz guest network (admin/wireless?form=...).

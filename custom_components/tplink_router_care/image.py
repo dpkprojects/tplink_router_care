@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from homeassistant.components.image import ImageEntity
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util import dt as dt_util
 
 from .api import GuestWifi
+from .const import CONF_QR_THEME, DEFAULT_QR_THEME
 from .coordinator import RouterConfigEntry, RouterCoordinator
 from .entity import RouterEntity
 from .qr import render_wifi_card, wifi_qr_payload
@@ -29,7 +31,8 @@ class RouterGuest5gQrImage(RouterEntity, ImageEntity):
 
     Built from the SSID and password read from the router, so it changes
     whenever the router reports a new password (button press, refresh or the
-    hourly poll).
+    hourly poll). The light/dark theme comes from the integration's options and
+    applies immediately when changed, without contacting the router.
     """
 
     _attr_translation_key = "guest_5g_qr"
@@ -40,7 +43,31 @@ class RouterGuest5gQrImage(RouterEntity, ImageEntity):
         ImageEntity.__init__(self, coordinator.hass)
         self._guest = self._current_guest()
         self._payload = wifi_qr_payload(self._guest) if self._guest else None
+        self._theme = self._current_theme()
         self._png: bytes | None = None
+        self._attr_image_last_updated = dt_util.utcnow()
+
+    def _current_theme(self) -> str:
+        return self.coordinator.config_entry.options.get(CONF_QR_THEME, DEFAULT_QR_THEME)
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            self.coordinator.config_entry.add_update_listener(self._async_options_updated)
+        )
+
+    async def _async_options_updated(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        """Re-render with the new theme (no reload, no router login)."""
+        theme = self._current_theme()
+        if theme != self._theme:
+            self._theme = theme
+            self._invalidate()
+            self.async_write_ha_state()
+
+    @callback
+    def _invalidate(self) -> None:
+        self._png = None
+        # Tells the frontend to fetch the new image.
         self._attr_image_last_updated = dt_util.utcnow()
 
     def _current_guest(self) -> GuestWifi | None:
@@ -58,18 +85,16 @@ class RouterGuest5gQrImage(RouterEntity, ImageEntity):
         if payload != self._payload:
             self._guest = guest
             self._payload = payload
-            self._png = None
-            # Tells the frontend to fetch the new image.
-            self._attr_image_last_updated = dt_util.utcnow()
+            self._invalidate()
         super()._handle_coordinator_update()
 
     async def async_image(self) -> bytes | None:
-        payload, guest = self._payload, self._guest
+        payload, guest, theme = self._payload, self._guest, self._theme
         if payload is None or guest is None:
             return None
         if self._png is None:
-            png = await self.hass.async_add_executor_job(render_wifi_card, guest)
-            if payload == self._payload:  # still current after the await
+            png = await self.hass.async_add_executor_job(render_wifi_card, guest, theme)
+            if (payload, theme) == (self._payload, self._theme):  # still current
                 self._png = png
             return png
         return self._png

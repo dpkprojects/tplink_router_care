@@ -34,6 +34,19 @@
       "reauth_successful": "Password updated."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "TP-Link Router Care options",
+        "data": {
+          "qr_theme": "QR code card theme"
+        },
+        "data_description": {
+          "qr_theme": "Look of the Guest 5 GHz QR code image. The QR code itself stays dark-on-white in both themes so every phone can scan it."
+        }
+      }
+    }
+  },
   "entity": {
     "binary_sensor": {
       "router_reachable": {
@@ -88,6 +101,14 @@
     "switch": {
       "guest_5g": {
         "name": "Guest Wi-Fi 5 GHz"
+      }
+    }
+  },
+  "selector": {
+    "qr_theme": {
+      "options": {
+        "light": "Light",
+        "dark": "Dark"
       }
     }
   }

@@ -79,7 +79,9 @@ in turn. The model it finds is saved, so later polls skip this step.
   network name, so you can read them off the device page.
 - **Guest 5 GHz QR code** image. A Wi-Fi card with a scannable QR code plus the network name and
   password, generated in memory from what the router reports. It updates automatically when the
-  password changes, and guests can join by pointing their phone camera at it.
+  password changes, and guests can join by pointing their phone camera at it. Choose a **Light**
+  or **Dark** card under **Settings → Devices & Services → TP-Link Router Care → Configure**; the
+  change applies immediately.
 
 The guest entities are created only if the router exposes the `guest_5g` wireless form (Archer
 AXE75 / AXE5400 and similar). Password changes are read back from the router before they're

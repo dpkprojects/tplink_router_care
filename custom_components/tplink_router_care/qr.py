@@ -8,6 +8,7 @@ requirements.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from functools import lru_cache
 import io
 
@@ -29,14 +30,56 @@ HEADER_H = 100
 BODY_H = HEIGHT - HEADER_H - 2 * PAD  # QR and panel area height
 PANEL_PAD = 32
 
-ACCENT = (37, 99, 235)  # blue
-ACCENT_DARK = (29, 78, 216)
-CARD_BG = (255, 255, 255)
-PANEL_BG = (243, 246, 251)
-DIVIDER = (219, 225, 234)
-TEXT = (17, 24, 39)
-MUTED = (107, 114, 128)
 WHITE = (255, 255, 255)
+# The QR itself is always dark-on-light in every theme: many phone cameras
+# can't read inverted (light-on-dark) codes.
+QR_DARK = (17, 24, 39)
+QR_LIGHT = WHITE
+
+
+@dataclass(frozen=True, slots=True)
+class CardTheme:
+    """Colors for one card theme."""
+
+    card_bg: tuple[int, int, int]
+    header_bg: tuple[int, int, int]
+    title: tuple[int, int, int]
+    subtitle: tuple[int, int, int]
+    panel_bg: tuple[int, int, int]
+    label: tuple[int, int, int]
+    text: tuple[int, int, int]
+    muted: tuple[int, int, int]
+    divider: tuple[int, int, int]
+    # White tile padding around the QR (px). 0 when the card itself is white.
+    qr_tile_pad: int
+
+
+THEMES: dict[str, CardTheme] = {
+    "light": CardTheme(
+        card_bg=WHITE,
+        header_bg=(37, 99, 235),
+        title=WHITE,
+        subtitle=(219, 234, 254),
+        panel_bg=(243, 246, 251),
+        label=(29, 78, 216),
+        text=(17, 24, 39),
+        muted=(107, 114, 128),
+        divider=(219, 225, 234),
+        qr_tile_pad=0,
+    ),
+    "dark": CardTheme(
+        card_bg=(17, 24, 39),
+        header_bg=(29, 78, 216),
+        title=WHITE,
+        subtitle=(191, 219, 254),
+        panel_bg=(31, 41, 55),
+        label=(96, 165, 250),
+        text=(243, 244, 246),
+        muted=(156, 163, 175),
+        divider=(55, 65, 81),
+        qr_tile_pad=16,
+    ),
+}
 # Wi-Fi glyph in the QR center: vertical gradient, blue-teal top -> green-teal bottom.
 GLYPH_TOP = (8, 145, 178)  # cyan-600
 GLYPH_BOTTOM = (13, 148, 136)  # teal-600
@@ -137,7 +180,7 @@ def _logo_badge(size: int) -> Image.Image:
     """
     big = size * SS
     img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
-    ImageDraw.Draw(img).ellipse((0, 0, big - 1, big - 1), fill=CARD_BG)
+    ImageDraw.Draw(img).ellipse((0, 0, big - 1, big - 1), fill=QR_LIGHT)
     glyph = _wifi_glyph_mask(big)
     img.paste(_vertical_gradient(big, glyph.getbbox()), (0, 0), glyph)
     return img.resize((size, size), Image.Resampling.LANCZOS)
@@ -173,7 +216,7 @@ def _qr_image(payload: str, max_px: int) -> Image.Image:
     modules = qr.symbol_size(scale=1, border=border)[0]
     scale = max(3, max_px // modules)
     buf = io.BytesIO()
-    qr.save(buf, kind="png", scale=scale, border=border, dark=TEXT, light=CARD_BG)
+    qr.save(buf, kind="png", scale=scale, border=border, dark=QR_DARK, light=QR_LIGHT)
     buf.seek(0)
     img = Image.open(buf).convert("RGBA")
 
@@ -184,13 +227,16 @@ def _qr_image(payload: str, max_px: int) -> Image.Image:
     return img
 
 
-def render_wifi_card(guest: GuestWifi, title: str = "Scan to Connect") -> bytes | None:
+def render_wifi_card(
+    guest: GuestWifi, theme: str = "light", title: str = "Scan to Connect"
+) -> bytes | None:
     """Render the landscape Wi-Fi card PNG (WIDTH x HEIGHT). CPU-bound; run in executor."""
     payload = wifi_qr_payload(guest)
     if payload is None:
         return None
     assert guest.ssid is not None and guest.password is not None
-    qr = _qr_image(payload, BODY_H)
+    t = THEMES.get(theme, THEMES["light"])
+    qr = _qr_image(payload, BODY_H - 2 * t.qr_tile_pad)
 
     # Geometry at supersampled scale.
     w, h = WIDTH * SS, HEIGHT * SS
@@ -198,8 +244,8 @@ def render_wifi_card(guest: GuestWifi, title: str = "Scan to Connect") -> bytes 
     header_h = HEADER_H * SS
     body_top = header_h + pad
     body_h = BODY_H * SS
-    qr_size = qr.width * SS
-    panel_x = pad + qr_size + GAP * SS
+    qr_box = (qr.width + 2 * t.qr_tile_pad) * SS  # QR plus its tile, if any
+    panel_x = pad + qr_box + GAP * SS
     panel_w = w - pad - panel_x
     panel_pad = PANEL_PAD * SS
     inner_w = panel_w - 2 * panel_pad
@@ -239,9 +285,16 @@ def render_wifi_card(guest: GuestWifi, title: str = "Scan to Connect") -> bytes 
     radius = RADIUS * SS
 
     # Card and header band (rounded top, square bottom edge).
-    draw.rounded_rectangle((0, 0, w - 1, h - 1), radius=radius, fill=CARD_BG)
-    draw.rounded_rectangle((0, 0, w - 1, header_h), radius=radius, fill=ACCENT)
-    draw.rectangle((0, header_h - radius, w - 1, header_h), fill=ACCENT)
+    draw.rounded_rectangle((0, 0, w - 1, h - 1), radius=radius, fill=t.card_bg)
+    draw.rounded_rectangle((0, 0, w - 1, header_h), radius=radius, fill=t.header_bg)
+    draw.rectangle((0, header_h - radius, w - 1, header_h), fill=t.header_bg)
+
+    # White tile behind the QR on dark cards (also completes its quiet zone).
+    if t.qr_tile_pad:
+        tile_top = body_top + (body_h - qr_box) // 2
+        draw.rounded_rectangle(
+            (pad, tile_top, pad + qr_box, tile_top + qr_box), radius=20 * SS, fill=QR_LIGHT
+        )
 
     # Header: centered title + subtitle.
     title_size = 35 * SS
@@ -249,18 +302,18 @@ def render_wifi_card(guest: GuestWifi, title: str = "Scan to Connect") -> bytes 
     line_gap = 7 * SS
     ty = (header_h - (title_size + line_gap + sub_size)) // 2
     tw = _text_w(draw, title, title_size, SS)
-    draw.text(((w - tw) // 2, ty), title, font=_font(title_size), fill=WHITE,
-              stroke_width=SS, stroke_fill=WHITE)
+    draw.text(((w - tw) // 2, ty), title, font=_font(title_size), fill=t.title,
+              stroke_width=SS, stroke_fill=t.title)
     sub = "5 GHz Wi-Fi" + (" · Hidden network" if guest.hidden else "")
     sw = _text_w(draw, sub, sub_size)
     draw.text(((w - sw) // 2, ty + title_size + line_gap), sub, font=_font(sub_size),
-              fill=(219, 234, 254))
+              fill=t.subtitle)
 
     # Info panel on the right, full body height.
     draw.rounded_rectangle(
         (panel_x, body_top, panel_x + panel_w, body_top + body_h),
         radius=22 * SS,
-        fill=PANEL_BG,
+        fill=t.panel_bg,
     )
     x = panel_x + panel_pad
     y = body_top + (body_h - content_h) // 2  # vertically centered
@@ -269,27 +322,27 @@ def render_wifi_card(guest: GuestWifi, title: str = "Scan to Connect") -> bytes 
     ):
         if i:
             y += block_gap
-        draw.text((x, y), label, font=_font(label_size), fill=ACCENT_DARK, stroke_width=1,
-                  stroke_fill=ACCENT_DARK)
+        draw.text((x, y), label, font=_font(label_size), fill=t.label, stroke_width=1,
+                  stroke_fill=t.label)
         y += label_size + label_gap
         for line in lines:
-            draw.text((x, y), line, font=_font(size), fill=TEXT, stroke_width=stroke // 2,
-                      stroke_fill=TEXT)
+            draw.text((x, y), line, font=_font(size), fill=t.text, stroke_width=stroke // 2,
+                      stroke_fill=t.text)
             y += int(size * 1.22)
 
     # Divider + caption.
     y += block_gap // 2
-    draw.line((x, y, x + inner_w, y), fill=DIVIDER, width=2 * SS)
+    draw.line((x, y, x + inner_w, y), fill=t.divider, width=2 * SS)
     y += block_gap // 2
     for line in caption_lines:
-        draw.text((x, y), line, font=_font(caption_size), fill=MUTED)
+        draw.text((x, y), line, font=_font(caption_size), fill=t.muted)
         y += int(caption_size * 1.4)
 
     # Downscale for anti-aliasing, then paste the QR at native resolution,
     # vertically centered in the body.
     card = img.resize((WIDTH, HEIGHT), Image.Resampling.LANCZOS)
     qr_y = HEADER_H + PAD + (BODY_H - qr.height) // 2
-    card.paste(qr, (PAD, qr_y))
+    card.paste(qr, (PAD + t.qr_tile_pad, qr_y))
 
     out = io.BytesIO()
     card.save(out, format="PNG", optimize=True)

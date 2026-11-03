@@ -10,9 +10,18 @@ from urllib.parse import urlsplit
 
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+)
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME
+from homeassistant.core import callback
 from homeassistant.helpers.selector import (
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
     TextSelector,
     TextSelectorConfig,
     TextSelectorType,
@@ -27,9 +36,12 @@ from .api import (
 )
 from .const import (
     CONF_CLIENT_CLASS,
+    CONF_QR_THEME,
+    DEFAULT_QR_THEME,
     DEFAULT_USERNAME,
     DETECT_TIMEOUT,
     DOMAIN,
+    QR_THEMES,
     REACHABILITY_TIMEOUT,
 )
 
@@ -81,6 +93,12 @@ class TplinkRouterCareConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow."""
 
     VERSION = 1
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+        """Options (the integration's Configure button)."""
+        return TplinkRouterCareOptionsFlow()
 
     async def _async_validate(
         self, host: str, username: str, password: str
@@ -175,3 +193,29 @@ class TplinkRouterCareConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
             description_placeholders={"host": entry.data[CONF_HOST]},
         )
+
+
+class TplinkRouterCareOptionsFlow(OptionsFlow):
+    """Display options. Changing them never contacts the router."""
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            return self.async_create_entry(data=user_input)
+
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_QR_THEME,
+                    default=self.config_entry.options.get(CONF_QR_THEME, DEFAULT_QR_THEME),
+                ): SelectSelector(
+                    SelectSelectorConfig(
+                        options=QR_THEMES,
+                        translation_key="qr_theme",
+                        mode=SelectSelectorMode.LIST,
+                    )
+                ),
+            }
+        )
+        return self.async_show_form(step_id="init", data_schema=schema)

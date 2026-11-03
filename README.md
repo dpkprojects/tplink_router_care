@@ -55,10 +55,3 @@ The integration polls every 60 seconds. Each poll logs in, reads the data and lo
   of failing. Unexpected library exceptions are caught and reported as failed updates.
 - If the password is wrong, polling stops and HA asks you to re-enter it, so it won't keep
   failing logins and get you locked out of the router.
-
-## Development
-
-```bash
-pip install pytest-homeassistant-custom-component   # needs Python 3.13+
-pytest
-```

@@ -1,0 +1,52 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to your TP-Link router",
+        "description": "Enter the router's IP address and the password you use for its web interface. Model detection can take up to a couple of minutes.",
+        "data": {
+          "host": "Router IP address",
+          "password": "Router password",
+          "username": "Username"
+        },
+        "data_description": {
+          "host": "For example 192.168.0.1. Prefix with https:// if your router only serves HTTPS.",
+          "username": "Most routers use 'admin'. Only change this if your router asks for a different username."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-enter router password",
+        "description": "The router at {host} rejected the stored password.",
+        "data": {
+          "password": "Router password"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the router. Check the IP address and that Home Assistant is on the same network.",
+      "invalid_auth": "The router rejected the password.",
+      "login_failed": "Login failed: either the password is wrong or this router model is not supported by tplinkrouterc6u. Also make sure nobody is logged into the router's web interface.",
+      "timeout": "The router took too long to respond.",
+      "unknown": "Unexpected error. Check the Home Assistant logs."
+    },
+    "abort": {
+      "already_configured": "This router is already configured.",
+      "reauth_successful": "Password updated."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "router_reachable": { "name": "Router reachable" }
+    },
+    "sensor": {
+      "clients_total": { "name": "Connected clients" },
+      "wifi_clients_total": { "name": "Wi-Fi clients" },
+      "wired_clients_total": { "name": "Wired clients" },
+      "guest_clients_total": { "name": "Guest clients" },
+      "cpu_usage": { "name": "CPU usage" },
+      "memory_usage": { "name": "Memory usage" },
+      "wan_ip": { "name": "WAN IP address" },
+      "wan_uptime": { "name": "WAN uptime" }
+    }
+  }
+}

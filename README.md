@@ -77,6 +77,9 @@ in turn. The model it finds is saved, so later polls skip this step.
   AXE75), the 2.4 GHz guest password changes too; the router doesn't allow setting them separately.
 - **Guest 5 GHz password** and **Guest 5 GHz SSID** sensors. Show the current guest password and
   network name, so you can read them off the device page.
+- **Guest 5 GHz QR code** image. A scannable Wi-Fi QR code for the guest network, generated in
+  memory from the SSID and password read from the router. It updates automatically when the
+  password changes, and guests can join by pointing their phone camera at it.
 
 The guest entities are created only if the router exposes the `guest_5g` wireless form (Archer
 AXE75 / AXE5400 and similar). Password changes are read back from the router before they're

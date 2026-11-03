@@ -13,6 +13,7 @@
     "tplinkrouterc6u"
   ],
   "requirements": [
+    "segno==1.6.6",
     "tplinkrouterc6u==5.38.0"
   ],
   "version": "0.1.0"

@@ -64,6 +64,9 @@ class GuestWifi:
     ssid: str | None
     enabled: bool
     password: str | None
+    # Router's psk_version, e.g. "auto" (WPA2/WPA3) or "sae_only" (WPA3 only).
+    psk_version: str | None = None
+    hidden: bool = False
 
 
 @dataclass(slots=True)
@@ -260,6 +263,8 @@ class RouterApi:
             ssid=info.get("ssid"),
             enabled=info.get("enable") == "on",
             password=password,
+            psk_version=info.get("psk_version"),
+            hidden=info.get("hidden") == "on",
         )
 
     @staticmethod

@@ -48,6 +48,11 @@
         "name": "New guest 5 GHz password"
       }
     },
+    "image": {
+      "guest_5g_qr": {
+        "name": "Guest 5 GHz QR code"
+      }
+    },
     "sensor": {
       "clients_total": {
         "name": "Connected clients"

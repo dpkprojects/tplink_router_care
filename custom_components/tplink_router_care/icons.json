@@ -8,6 +8,11 @@
         "default": "mdi:key-change"
       }
     },
+    "image": {
+      "guest_5g_qr": {
+        "default": "mdi:qrcode"
+      }
+    },
     "sensor": {
       "guest_5g_password": {
         "default": "mdi:key-wireless"

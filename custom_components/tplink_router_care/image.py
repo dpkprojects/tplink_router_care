@@ -7,9 +7,10 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util import dt as dt_util
 
+from .api import GuestWifi
 from .coordinator import RouterConfigEntry, RouterCoordinator
 from .entity import RouterEntity
-from .qr import render_png, wifi_qr_payload
+from .qr import render_wifi_card, wifi_qr_payload
 
 
 async def async_setup_entry(
@@ -24,7 +25,7 @@ async def async_setup_entry(
 
 
 class RouterGuest5gQrImage(RouterEntity, ImageEntity):
-    """QR code for joining the 5 GHz guest Wi-Fi, generated in memory.
+    """Wi-Fi card (QR code + network name + password), generated in memory.
 
     Built from the SSID and password read from the router, so it changes
     whenever the router reports a new password (button press, refresh or the
@@ -37,14 +38,14 @@ class RouterGuest5gQrImage(RouterEntity, ImageEntity):
     def __init__(self, coordinator: RouterCoordinator) -> None:
         super().__init__(coordinator, "guest_5g_qr")
         ImageEntity.__init__(self, coordinator.hass)
-        self._payload = self._current_payload()
+        self._guest = self._current_guest()
+        self._payload = wifi_qr_payload(self._guest) if self._guest else None
         self._png: bytes | None = None
         self._attr_image_last_updated = dt_util.utcnow()
 
-    def _current_payload(self) -> str | None:
+    def _current_guest(self) -> GuestWifi | None:
         data = self.coordinator.data
-        guest = data.guest_5g if data else None
-        return wifi_qr_payload(guest) if guest else None
+        return data.guest_5g if data else None
 
     @property
     def available(self) -> bool:
@@ -52,8 +53,10 @@ class RouterGuest5gQrImage(RouterEntity, ImageEntity):
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        payload = self._current_payload()
+        guest = self._current_guest()
+        payload = wifi_qr_payload(guest) if guest else None
         if payload != self._payload:
+            self._guest = guest
             self._payload = payload
             self._png = None
             # Tells the frontend to fetch the new image.
@@ -61,11 +64,11 @@ class RouterGuest5gQrImage(RouterEntity, ImageEntity):
         super()._handle_coordinator_update()
 
     async def async_image(self) -> bytes | None:
-        payload = self._payload
-        if payload is None:
+        payload, guest = self._payload, self._guest
+        if payload is None or guest is None:
             return None
         if self._png is None:
-            png = await self.hass.async_add_executor_job(render_png, payload)
+            png = await self.hass.async_add_executor_job(render_wifi_card, guest)
             if payload == self._payload:  # still current after the await
                 self._png = png
             return png

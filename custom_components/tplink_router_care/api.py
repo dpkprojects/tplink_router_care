@@ -26,7 +26,13 @@ from tplinkrouterc6u import (
     TplinkRouterProvider,
 )
 
-from .const import GUEST_5G_FORM, GUEST_PASSWORD_LENGTH, LOCK_TIMEOUT, REQUEST_TIMEOUT
+from .const import (
+    GUEST_2G5G_FORM,
+    GUEST_5G_FORM,
+    GUEST_PASSWORD_LENGTH,
+    LOCK_TIMEOUT,
+    REQUEST_TIMEOUT,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -190,16 +196,23 @@ class RouterApi:
     def set_guest_5g_enabled(self, enable: bool) -> GuestWifi:
         """Turn the 5 GHz guest network on or off; returns the new state."""
         return self._write_guest_5g(
-            f"operation=write&enable={'on' if enable else 'off'}",
+            [(GUEST_5G_FORM, f"operation=write&enable={'on' if enable else 'off'}")],
             lambda guest: guest.enabled == enable,
         )
 
     def set_guest_5g_password(self, password: str) -> GuestWifi:
-        """Set the 5 GHz guest network password; returns the new state."""
+        """Set the 5 GHz guest network password; returns the new state.
+
+        Tries the 5 GHz form alone first. Routers such as the Archer AXE75 keep
+        one shared key for 2.4 + 5 GHz guest and ignore a 5 GHz-only write; for
+        those, fall back to the shared guest_2g5g form (which necessarily
+        changes the 2.4 GHz guest password too).
+        """
         if not 8 <= len(password) <= 63:
             raise ValueError("Wi-Fi password must be 8-63 characters")
+        data = f"operation=write&psk_key={quote(password, safe='')}"
         return self._write_guest_5g(
-            f"operation=write&psk_key={quote(password, safe='')}",
+            [(GUEST_5G_FORM, data), (GUEST_2G5G_FORM, data)],
             lambda guest: guest.password == password,
         )
 
@@ -233,9 +246,11 @@ class RouterApi:
         )
 
     def _write_guest_5g(
-        self, data: str, applied: Callable[[GuestWifi], bool]
+        self,
+        attempts: list[tuple[str, str]],
+        applied: Callable[[GuestWifi], bool],
     ) -> GuestWifi:
-        """Write to the guest_5g form, then read it back to confirm."""
+        """Try each (form, data) write in turn until guest_5g reads back as applied."""
         with self._locked():
             router = self._new_client()
             if getattr(router, "request", None) is None:
@@ -243,18 +258,35 @@ class RouterApi:
                     "This router model does not support guest Wi-Fi control"
                 )
             self._authorize(router)
+            problems: list[str] = []
             try:
-                router.request(f"admin/wireless?form={GUEST_5G_FORM}", data)
-                guest = self._read_guest_5g(router)
-                if guest is None or not applied(guest):
-                    raise RouterError("Router did not apply the guest Wi-Fi change")
-                return guest
-            except RouterError:
-                raise
-            except requests.exceptions.RequestException as err:
-                raise RouterConnectionError(str(err)) from err
-            except Exception as err:  # noqa: BLE001 - library raises bare Exception
-                raise RouterError(f"Guest Wi-Fi change failed: {err}") from err
+                for form, data in attempts:
+                    try:
+                        response = router.request(f"admin/wireless?form={form}", data)
+                        _LOGGER.debug("Write to %s returned %s", form, response)
+                    except requests.exceptions.RequestException as err:
+                        raise RouterConnectionError(str(err)) from err
+                    except Exception as err:  # noqa: BLE001 - library raises bare Exception
+                        _LOGGER.debug("Write to %s failed", form, exc_info=True)
+                        problems.append(f"{form}: {err}")
+                        continue
+
+                    try:
+                        guest = self._read_guest_5g(router)
+                    except requests.exceptions.RequestException as err:
+                        raise RouterConnectionError(str(err)) from err
+                    except Exception as err:  # noqa: BLE001
+                        raise RouterError(f"Could not read back guest Wi-Fi: {err}") from err
+                    _LOGGER.debug("guest_5g after writing %s: %s", form, guest)
+                    if guest is not None and applied(guest):
+                        return guest
+                    problems.append(f"{form}: write accepted but not applied")
+
+                raise RouterError(
+                    "Router did not apply the guest Wi-Fi change ("
+                    + "; ".join(problems)
+                    + ")"
+                )
             finally:
                 try:
                     router.logout()

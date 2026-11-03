@@ -10,6 +10,8 @@ CONF_CLIENT_CLASS: Final = "client_class"
 DEFAULT_USERNAME: Final = "admin"
 # LuCI wireless form for the 5 GHz guest network (admin/wireless?form=...).
 GUEST_5G_FORM: Final = "guest_5g"
+# Shared-key form used by routers where 2.4 + 5 GHz guest use one password.
+GUEST_2G5G_FORM: Final = "guest_2g5g"
 GUEST_PASSWORD_LENGTH: Final = 8
 DEFAULT_SCAN_INTERVAL: Final = timedelta(hours=1)
 

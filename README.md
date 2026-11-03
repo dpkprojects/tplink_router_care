@@ -61,7 +61,8 @@ in turn. The model it finds is saved, so later polls skip this step.
 - **Restart** button.
 - **Guest Wi-Fi 5 GHz** switch. Turns the 5 GHz guest network on and off.
 - **New guest 5 GHz password** button. Sets a random 8-character password (letters and digits) on
-  the 5 GHz guest network.
+  the 5 GHz guest network. On routers where 2.4 and 5 GHz guest share one password (e.g. Archer
+  AXE75), the 2.4 GHz guest password changes too; the router doesn't allow setting them separately.
 - **Guest 5 GHz password** and **Guest 5 GHz SSID** sensors. Show the current guest password and
   network name, so you can read them off the device page.
 

@@ -8,7 +8,7 @@ DOMAIN: Final = "tplink_router_care"
 CONF_CLIENT_CLASS: Final = "client_class"
 
 DEFAULT_USERNAME: Final = "admin"
-DEFAULT_SCAN_INTERVAL: Final = timedelta(seconds=60)
+DEFAULT_SCAN_INTERVAL: Final = timedelta(hours=1)
 
 # Per-HTTP-request timeout handed to the library (seconds).
 REQUEST_TIMEOUT: Final = 10

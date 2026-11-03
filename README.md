@@ -42,7 +42,7 @@ in turn. The model it finds is saved, so later polls skip this step.
   your router reports them.
 - **Restart** button.
 
-The integration polls every 60 seconds. Each poll logs in, reads the data and logs out.
+The integration polls once an hour. Each poll logs in, reads the data and logs out.
 
 ## How it avoids breaking Home Assistant
 

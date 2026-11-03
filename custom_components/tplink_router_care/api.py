@@ -232,9 +232,17 @@ class RouterApi:
         except ClientException as err:
             raise RouterError(str(err)) from err
 
-    @staticmethod
-    def _read_guest_5g(router: AbstractRouter) -> GuestWifi | None:
-        """Read the guest_5g wireless form. Raises on request errors."""
+    @classmethod
+    def _read_guest_5g(
+        cls, router: AbstractRouter, *, active_key: bool = True
+    ) -> GuestWifi | None:
+        """Read the 5 GHz guest network from the router. Raises on request errors.
+
+        With ``active_key`` (the default), the password is taken from the
+        shared guest_2g5g form when the router has one, because that's the key
+        the radio actually uses (guest_5g can hold a stale or echoed value).
+        ``active_key=False`` reports guest_5g's own psk_key, for verification.
+        """
         request = getattr(router, "request", None)
         if request is None:
             # Client class without the LuCI request API (not a router that has
@@ -243,10 +251,15 @@ class RouterApi:
         info = request(f"admin/wireless?form={GUEST_5G_FORM}", "operation=read")
         if not isinstance(info, dict):
             return None
+        password = info.get("psk_key")
+        if active_key:
+            shared = cls._read_shared_guest(router)
+            if shared is not None and shared.get("psk_key"):
+                password = shared["psk_key"]
         return GuestWifi(
             ssid=info.get("ssid"),
             enabled=info.get("enable") == "on",
-            password=info.get("psk_key"),
+            password=password,
         )
 
     @staticmethod
@@ -298,7 +311,7 @@ class RouterApi:
                         continue
 
                     try:
-                        guest = self._read_guest_5g(router)
+                        guest = self._read_guest_5g(router, active_key=False)
                     except requests.exceptions.RequestException as err:
                         raise RouterConnectionError(str(err)) from err
                     except Exception as err:  # noqa: BLE001
@@ -313,7 +326,17 @@ class RouterApi:
                         if shared is None or not shared_applied(shared):
                             problems.append(f"{form}: shared guest_2g5g key not updated")
                             continue
-                    return guest
+                    # Confirmed. Report what the router now holds, from one
+                    # final fresh read (not the value we sent).
+                    try:
+                        final = self._read_guest_5g(router)
+                    except requests.exceptions.RequestException as err:
+                        raise RouterConnectionError(str(err)) from err
+                    except Exception as err:  # noqa: BLE001
+                        raise RouterError(f"Could not read back guest Wi-Fi: {err}") from err
+                    if final is None:
+                        raise RouterError("Router stopped returning guest Wi-Fi settings")
+                    return final
 
                 raise RouterError(
                     "Router did not apply the guest Wi-Fi change ("

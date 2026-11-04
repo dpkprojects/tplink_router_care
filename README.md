@@ -83,6 +83,10 @@ in turn. The model it finds is saved, so later polls skip this step.
   or **Dark** card under **Settings → Devices & Services → TP-Link Router Care → Configure**; the
   change applies immediately.
 
+  ![Sample guest Wi-Fi QR card (dummy network and password)](docs/guest-wifi-qr-sample.png)
+
+  *Sample card with a dummy network name and password.*
+
 The guest entities are created only if the router exposes the `guest_5g` wireless form (Archer
 AXE75 / AXE5400 and similar). Password changes are read back from the router before they're
 shown, so the sensor always reflects what the router actually stored.

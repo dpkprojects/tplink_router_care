@@ -16,9 +16,16 @@ from homeassistant.config_entries import (
     ConfigFlowResult,
     OptionsFlow,
 )
-from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME
+from homeassistant.components import webhook
+from homeassistant.const import (
+    CONF_HOST,
+    CONF_PASSWORD,
+    CONF_USERNAME,
+    CONF_WEBHOOK_ID,
+)
 from homeassistant.core import callback
 from homeassistant.helpers.selector import (
+    BooleanSelector,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
@@ -37,12 +44,20 @@ from .api import (
 from .const import (
     CONF_CLIENT_CLASS,
     CONF_QR_THEME,
+    CONF_WEBHOOK_ENABLED,
     DEFAULT_QR_THEME,
+    DEFAULT_WEBHOOK_ENABLED,
     DEFAULT_USERNAME,
     DETECT_TIMEOUT,
     DOMAIN,
     QR_THEMES,
     REACHABILITY_TIMEOUT,
+)
+from .qr_webhook import (
+    WEBHOOK_ID_RE,
+    async_ensure_webhook_id,
+    async_webhook_id_in_use,
+    async_webhook_url,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -195,27 +210,63 @@ class TplinkRouterCareConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
 
+OPTIONS_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_QR_THEME): SelectSelector(
+            SelectSelectorConfig(
+                options=QR_THEMES,
+                translation_key="qr_theme",
+                mode=SelectSelectorMode.LIST,
+            )
+        ),
+        vol.Required(CONF_WEBHOOK_ENABLED): BooleanSelector(),
+        vol.Optional(CONF_WEBHOOK_ID): str,
+    }
+)
+
+
 class TplinkRouterCareOptionsFlow(OptionsFlow):
-    """Display options. Changing them never contacts the router."""
+    """Display and webhook options. Changing them never contacts the router."""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        if user_input is not None:
-            return self.async_create_entry(data=user_input)
+        errors: dict[str, str] = {}
+        current_id = async_ensure_webhook_id(self.hass, self.config_entry)
+        options = self.config_entry.options
 
-        schema = vol.Schema(
-            {
-                vol.Required(
-                    CONF_QR_THEME,
-                    default=self.config_entry.options.get(CONF_QR_THEME, DEFAULT_QR_THEME),
-                ): SelectSelector(
-                    SelectSelectorConfig(
-                        options=QR_THEMES,
-                        translation_key="qr_theme",
-                        mode=SelectSelectorMode.LIST,
-                    )
-                ),
-            }
+        if user_input is not None:
+            webhook_id = (user_input.get(CONF_WEBHOOK_ID) or "").strip()
+            if not webhook_id:
+                # Cleared field: issue a new random (secret) ID.
+                webhook_id = webhook.async_generate_id()
+            elif not WEBHOOK_ID_RE.match(webhook_id):
+                errors[CONF_WEBHOOK_ID] = "invalid_webhook_id"
+            elif webhook_id != current_id and async_webhook_id_in_use(
+                self.hass, webhook_id
+            ):
+                errors[CONF_WEBHOOK_ID] = "webhook_id_taken"
+            if not errors:
+                return self.async_create_entry(
+                    data={**user_input, CONF_WEBHOOK_ID: webhook_id}
+                )
+
+        url = async_webhook_url(self.hass, current_id)
+        enabled = options.get(CONF_WEBHOOK_ENABLED, DEFAULT_WEBHOOK_ENABLED)
+        return self.async_show_form(
+            step_id="init",
+            data_schema=self.add_suggested_values_to_schema(
+                OPTIONS_SCHEMA,
+                user_input
+                or {
+                    CONF_QR_THEME: options.get(CONF_QR_THEME, DEFAULT_QR_THEME),
+                    CONF_WEBHOOK_ENABLED: enabled,
+                    CONF_WEBHOOK_ID: current_id,
+                },
+            ),
+            errors=errors,
+            description_placeholders={
+                "webhook_url": url,
+                "webhook_status": "on" if enabled else "off",
+            },
         )
-        return self.async_show_form(step_id="init", data_schema=schema)

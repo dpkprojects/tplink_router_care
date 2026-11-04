@@ -8,6 +8,7 @@ from homeassistant.core import HomeAssistant
 from .api import RouterApi
 from .const import CONF_CLIENT_CLASS, DEFAULT_USERNAME
 from .coordinator import RouterConfigEntry, RouterCoordinator
+from .qr_webhook import async_setup_qr_webhook
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
@@ -33,6 +34,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: RouterConfigEntry) -> bo
     await coordinator.async_config_entry_first_refresh()
 
     entry.runtime_data = coordinator
+    async_setup_qr_webhook(hass, entry)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 

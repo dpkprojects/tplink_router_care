@@ -38,13 +38,22 @@
     "step": {
       "init": {
         "title": "TP-Link Router Care options",
+        "description": "The guest Wi-Fi QR card can also be fetched as a PNG from a webhook URL (local network only, no login needed). Add `?theme=light` or `?theme=dark` to override the card theme.\n\nWebhook (currently {webhook_status}): `{webhook_url}`",
         "data": {
-          "qr_theme": "QR code card theme"
+          "qr_theme": "QR code card theme",
+          "webhook_enabled": "Enable QR code webhook",
+          "webhook_id": "Webhook ID"
         },
         "data_description": {
-          "qr_theme": "Look of the Guest 5 GHz QR code image. The QR code itself stays dark-on-white in both themes so every phone can scan it."
+          "qr_theme": "Look of the Guest 5 GHz QR code image. The QR code itself stays dark-on-white in both themes so every phone can scan it.",
+          "webhook_enabled": "Serve the QR card at the webhook URL. The card shows the guest password, so leave this off if you don't need it.",
+          "webhook_id": "Last part of the webhook URL. Set your own fixed ID (letters, digits, - and _), or clear the field to generate a new random one. Anyone on your network who knows it can see the guest password, so use something hard to guess."
         }
       }
+    },
+    "error": {
+      "invalid_webhook_id": "Use 1 to 64 letters, digits, - or _.",
+      "webhook_id_taken": "Another integration already uses this webhook ID."
     }
   },
   "entity": {

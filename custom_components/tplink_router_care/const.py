@@ -10,6 +10,10 @@ CONF_CLIENT_CLASS: Final = "client_class"
 CONF_QR_THEME: Final = "qr_theme"
 QR_THEMES: Final = ["light", "dark"]
 DEFAULT_QR_THEME: Final = "light"
+# Webhook serving the QR card PNG (its ID is stored under CONF_WEBHOOK_ID).
+CONF_WEBHOOK_ENABLED: Final = "webhook_enabled"
+# Off by default: the card shows the guest password.
+DEFAULT_WEBHOOK_ENABLED: Final = False
 
 DEFAULT_USERNAME: Final = "admin"
 # LuCI wireless form for the 5 GHz guest network (admin/wireless?form=...).

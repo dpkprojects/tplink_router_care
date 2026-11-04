@@ -87,6 +87,30 @@ in turn. The model it finds is saved, so later polls skip this step.
 
   *Sample card with a dummy network name and password.*
 
+  **Get the card over HTTP (webhook).** The same PNG can be served at a webhook URL, so a wall
+  tablet, e-ink display, kiosk page or script can fetch it without a Home Assistant token. It's
+  off by default. To set it up, open **Settings → Devices & Services → TP-Link Router Care →
+  Configure**:
+
+  - **Enable QR code webhook** turns it on or off.
+  - **Webhook ID** is the last part of the URL. It starts as a random ID. You can replace it
+    with your own fixed ID (letters, digits, `-` and `_`, up to 64 characters), or clear the
+    field to get a new random one.
+
+  Changes apply immediately, with no restart and no router login. The ID stays the same across
+  restarts and updates until you change it. The full URL is shown at the top of the same dialog:
+
+  ```bash
+  curl -o guest-wifi.png "http://homeassistant.local:8123/api/webhook/<webhook_id>"
+  curl -o guest-wifi.png "http://homeassistant.local:8123/api/webhook/<webhook_id>?theme=dark"
+  ```
+
+  `GET` returns `image/png`. Use `?theme=light|dark` to override the configured theme. You get
+  `404` if the router has no 5 GHz guest network, and `503` if the name or password isn't known
+  yet. The webhook only answers requests from your local network, because the card shows the guest
+  password. Anyone on your network who knows the ID can see the password, so pick one that's hard
+  to guess.
+
 The guest entities are created only if the router exposes the `guest_5g` wireless form (Archer
 AXE75 / AXE5400 and similar). Password changes are read back from the router before they're
 shown, so the sensor always reflects what the router actually stored.

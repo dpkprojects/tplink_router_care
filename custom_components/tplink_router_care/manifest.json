@@ -5,6 +5,9 @@
     "@dpkprojects"
   ],
   "config_flow": true,
+  "dependencies": [
+    "webhook"
+  ],
   "documentation": "https://github.com/dpkprojects/tplink_router_care",
   "integration_type": "device",
   "iot_class": "local_polling",
@@ -16,5 +19,5 @@
     "segno==1.6.6",
     "tplinkrouterc6u==5.38.0"
   ],
-  "version": "0.1.1"
+  "version": "0.1.2"
 }

@@ -227,6 +227,7 @@ def _qr_image(payload: str, max_px: int) -> Image.Image:
     return img
 
 
+@lru_cache(maxsize=8)
 def render_wifi_card(
     guest: GuestWifi, theme: str = "light", title: str = "Scan to Connect"
 ) -> bytes | None:

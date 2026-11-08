@@ -65,11 +65,13 @@ in turn. The model it finds is saved, so later polls skip this step.
 ## Entities
 
 - **Router reachable** (connectivity binary sensor). Turns off when a poll fails.
+- **Last sync** (timestamp sensor). When data was last read from the router successfully, shown as
+  "5 minutes ago". It keeps showing the last good time while the router is unreachable.
 - **Connected / Wi-Fi / Wired / Guest clients** sensors.
 - **CPU usage, Memory usage, WAN IP address, WAN uptime** (diagnostic). These are created only if
   your router reports them.
 - **Refresh data** button. Polls the router immediately, for when you want fresh metrics without
-  waiting for the hourly poll.
+  waiting for the next scheduled poll (or when automatic polling is disabled).
 - **Restart** button.
 - **Guest Wi-Fi 5 GHz** switch. Turns the 5 GHz guest network on and off.
 - **New guest 5 GHz password** button. Sets a random 8-character password (letters and digits) on
@@ -115,7 +117,12 @@ The guest entities are created only if the router exposes the `guest_5g` wireles
 AXE75 / AXE5400 and similar). Password changes are read back from the router before they're
 shown, so the sensor always reflects what the router actually stored.
 
-The integration polls once an hour. Each poll logs in, reads the data and logs out.
+By default the integration polls once an hour. Each poll logs in, reads the data and logs out.
+Change this under **Settings → Devices & Services → TP-Link Router Care → Configure → Polling
+interval**: every 30 minutes, 1, 3, 6, 12 or 24 hours, once a week, or **Disabled**. With polling
+disabled, data is fetched once at startup and then only when you press **Refresh data**; guest
+Wi-Fi changes made from Home Assistant still update their entities right away. The new interval
+applies immediately, without a restart.
 
 ## How it avoids breaking Home Assistant
 

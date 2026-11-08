@@ -33,7 +33,7 @@ async def async_setup_entry(
 
 
 class RouterRefreshButton(RouterEntity, ButtonEntity):
-    """Polls the router immediately instead of waiting for the next hourly poll."""
+    """Polls the router immediately instead of waiting for the next scheduled poll."""
 
     _attr_translation_key = "refresh"
 
@@ -48,7 +48,7 @@ class RouterRefreshButton(RouterEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         # Runs one poll now (in the executor, via the coordinator) and restarts
-        # the hourly timer. All entities update from the result.
+        # the polling timer. All entities update from the result.
         await self.coordinator.async_refresh()
         if not self.coordinator.last_update_success:
             raise HomeAssistantError(

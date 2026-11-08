@@ -31,7 +31,7 @@ class RouterGuest5gQrImage(RouterEntity, ImageEntity):
 
     Built from the SSID and password read from the router, so it changes
     whenever the router reports a new password (button press, refresh or the
-    hourly poll). The light/dark theme comes from the integration's options and
+    scheduled poll). The light/dark theme comes from the integration's options and
     applies immediately when changed, without contacting the router.
     """
 

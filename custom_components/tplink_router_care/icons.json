@@ -14,6 +14,9 @@
       }
     },
     "sensor": {
+      "last_sync": {
+        "default": "mdi:clock-check-outline"
+      },
       "guest_5g_password": {
         "default": "mdi:key-wireless"
       },

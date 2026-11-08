@@ -33,9 +33,19 @@ class RouterSensorDescription(SensorEntityDescription):
     value_fn: Callable[[RouterData], Any]
     # Only create the entity if the router actually reports this value.
     optional: bool = False
+    # Keep showing the last value when a poll fails instead of going unavailable.
+    keep_on_failure: bool = False
 
 
 SENSORS: tuple[RouterSensorDescription, ...] = (
+    RouterSensorDescription(
+        key="last_sync",
+        translation_key="last_sync",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=lambda d: d.fetched_at,
+        # The point is to show how stale the data is while the router is down.
+        keep_on_failure=True,
+    ),
     RouterSensorDescription(
         key="clients_total",
         translation_key="clients_total",
@@ -143,6 +153,12 @@ class RouterSensor(RouterEntity, SensorEntity):
     ) -> None:
         super().__init__(coordinator, description.key)
         self.entity_description = description
+
+    @property
+    def available(self) -> bool:
+        if self.entity_description.keep_on_failure:
+            return self.coordinator.data is not None
+        return super().available
 
     @property
     def native_value(self) -> Any:

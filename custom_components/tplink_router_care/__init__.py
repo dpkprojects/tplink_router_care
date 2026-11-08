@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME, Platform
 from homeassistant.core import HomeAssistant
 
@@ -34,6 +35,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: RouterConfigEntry) -> bo
     await coordinator.async_config_entry_first_refresh()
 
     entry.runtime_data = coordinator
+
+    async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
+        coordinator.async_apply_scan_interval()
+
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     async_setup_qr_webhook(hass, entry)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True

@@ -1,6 +1,5 @@
 """Constants for the TP-Link Router Care integration."""
 
-from datetime import timedelta
 from typing import Final
 
 DOMAIN: Final = "tplink_router_care"
@@ -21,7 +20,10 @@ GUEST_5G_FORM: Final = "guest_5g"
 # Shared-key form used by routers where 2.4 + 5 GHz guest use one password.
 GUEST_2G5G_FORM: Final = "guest_2g5g"
 GUEST_PASSWORD_LENGTH: Final = 8
-DEFAULT_SCAN_INTERVAL: Final = timedelta(hours=1)
+# Polling interval option, in minutes (strings, as the select selector needs).
+# "0" turns automatic polling off; the Refresh data button still works.
+SCAN_INTERVAL_OPTIONS: Final = ["0", "30", "60", "180", "360", "720", "1440", "10080"]
+DEFAULT_SCAN_INTERVAL: Final = "60"
 
 # Per-HTTP-request timeout handed to the library (seconds).
 REQUEST_TIMEOUT: Final = 10

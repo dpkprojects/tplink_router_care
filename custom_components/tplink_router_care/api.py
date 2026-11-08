@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import datetime
 import logging
 import secrets
 import string
@@ -77,6 +78,8 @@ class RouterData:
     status: Status
     # None if the router doesn't expose the guest_5g form (or reading it failed).
     guest_5g: GuestWifi | None = None
+    # When this snapshot was read from the router (UTC); set by the coordinator.
+    fetched_at: datetime | None = None
 
 
 def generate_password(length: int = GUEST_PASSWORD_LENGTH) -> str:

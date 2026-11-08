@@ -41,12 +41,14 @@
         "description": "The guest Wi-Fi QR card can also be fetched as a PNG from a webhook URL (local network only, no login needed). Add `?theme=light` or `?theme=dark` to override the card theme.\n\nWebhook (currently {webhook_status}): `{webhook_url}`",
         "data": {
           "scan_interval": "Polling interval",
+          "guest_password_rotation": "Change guest Wi-Fi password automatically",
           "qr_theme": "QR code card theme",
           "webhook_enabled": "Enable QR code webhook",
           "webhook_id": "Webhook ID"
         },
         "data_description": {
           "scan_interval": "How often Home Assistant logs in to the router to refresh its data. Choose Disabled to stop automatic polling; the Refresh data button still polls on demand, and guest Wi-Fi changes still update right away.",
+          "guest_password_rotation": "Sets a new random guest 5 GHz password (and so a new QR code) on this schedule. Guest devices will need the new password or QR code to reconnect. The schedule survives restarts, and pressing the New guest 5 GHz password button restarts it. Only works if your router exposes the 5 GHz guest network.",
           "qr_theme": "Look of the Guest 5 GHz QR code image. The QR code itself stays dark-on-white in both themes so every phone can scan it.",
           "webhook_enabled": "Serve the QR card at the webhook URL. The card shows the guest password, so leave this off if you don't need it.",
           "webhook_id": "Last part of the webhook URL. Set your own fixed ID (letters, digits, - and _), or clear the field to generate a new random one. Anyone on your network who knows it can see the guest password, so use something hard to guess."
@@ -129,6 +131,17 @@
         "720": "Every 12 hours",
         "1440": "Every 24 hours",
         "10080": "Every week"
+      }
+    },
+    "guest_password_rotation": {
+      "options": {
+        "0": "Disabled",
+        "12": "Every 12 hours",
+        "24": "Every day",
+        "48": "Every 2 days",
+        "168": "Every week",
+        "720": "Every month (30 days)",
+        "2160": "Every 3 months (90 days)"
       }
     },
     "qr_theme": {

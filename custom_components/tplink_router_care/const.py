@@ -1,5 +1,6 @@
 """Constants for the TP-Link Router Care integration."""
 
+from datetime import timedelta
 from typing import Final
 
 DOMAIN: Final = "tplink_router_care"
@@ -24,6 +25,17 @@ GUEST_PASSWORD_LENGTH: Final = 8
 # "0" turns automatic polling off; the Refresh data button still works.
 SCAN_INTERVAL_OPTIONS: Final = ["0", "30", "60", "180", "360", "720", "1440", "10080"]
 DEFAULT_SCAN_INTERVAL: Final = "60"
+# Automatic guest Wi-Fi password (and QR code) rotation, in hours. "0" = off;
+# then 12 h, 1 day, 2 days, 1 week, 1 month (30 days), 3 months (90 days).
+CONF_GUEST_ROTATION: Final = "guest_password_rotation"
+GUEST_ROTATION_OPTIONS: Final = ["0", "12", "24", "48", "168", "720", "2160"]
+DEFAULT_GUEST_ROTATION: Final = "0"
+# Entry data key holding when the guest password was last changed by us (ISO).
+DATA_GUEST_ROTATED_AT: Final = "guest_password_rotated_at"
+# A due rotation never fires sooner than this (e.g. right after startup).
+ROTATION_MIN_DELAY: Final = timedelta(minutes=2)
+# Wait before retrying a failed automatic rotation.
+ROTATION_RETRY: Final = timedelta(hours=1)
 
 # Per-HTTP-request timeout handed to the library (seconds).
 REQUEST_TIMEOUT: Final = 10

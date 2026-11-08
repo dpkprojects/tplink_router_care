@@ -10,7 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .api import RouterError, generate_password
+from .api import RouterError
 from .const import UPDATE_TIMEOUT
 from .coordinator import RouterConfigEntry, RouterCoordinator
 from .entity import RouterEntity
@@ -66,9 +66,9 @@ class RouterGuest5gPasswordButton(RouterEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         # The "Guest 5 GHz password" sensor updates from the router's read-back.
-        await self.coordinator.async_set_guest_5g(
-            self.coordinator.api.set_guest_5g_password, generate_password()
-        )
+        # Goes through the rotator so a manual change restarts the automatic
+        # rotation clock.
+        await self.coordinator.rotator.async_rotate_now()
 
 
 class RouterRebootButton(RouterEntity, ButtonEntity):

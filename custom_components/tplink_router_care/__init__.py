@@ -38,8 +38,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: RouterConfigEntry) -> bo
 
     async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
         coordinator.async_apply_scan_interval()
+        coordinator.rotator.async_schedule()
 
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
+    coordinator.rotator.async_schedule()
+    entry.async_on_unload(coordinator.rotator.async_cancel)
     async_setup_qr_webhook(hass, entry)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True

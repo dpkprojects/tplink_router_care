@@ -44,14 +44,17 @@ from .api import (
 )
 from .const import (
     CONF_CLIENT_CLASS,
+    CONF_GUEST_ROTATION,
     CONF_QR_THEME,
     CONF_WEBHOOK_ENABLED,
+    DEFAULT_GUEST_ROTATION,
     DEFAULT_QR_THEME,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_WEBHOOK_ENABLED,
     DEFAULT_USERNAME,
     DETECT_TIMEOUT,
     DOMAIN,
+    GUEST_ROTATION_OPTIONS,
     QR_THEMES,
     REACHABILITY_TIMEOUT,
     SCAN_INTERVAL_OPTIONS,
@@ -222,6 +225,13 @@ OPTIONS_SCHEMA = vol.Schema(
                 mode=SelectSelectorMode.DROPDOWN,
             )
         ),
+        vol.Required(CONF_GUEST_ROTATION): SelectSelector(
+            SelectSelectorConfig(
+                options=GUEST_ROTATION_OPTIONS,
+                translation_key="guest_password_rotation",
+                mode=SelectSelectorMode.DROPDOWN,
+            )
+        ),
         vol.Required(CONF_QR_THEME): SelectSelector(
             SelectSelectorConfig(
                 options=QR_THEMES,
@@ -236,7 +246,7 @@ OPTIONS_SCHEMA = vol.Schema(
 
 
 class TplinkRouterCareOptionsFlow(OptionsFlow):
-    """Polling, display and webhook options. Changing them never contacts the router."""
+    """Polling, rotation, display and webhook options. Saving never contacts the router."""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -271,6 +281,9 @@ class TplinkRouterCareOptionsFlow(OptionsFlow):
                 or {
                     CONF_SCAN_INTERVAL: options.get(
                         CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
+                    ),
+                    CONF_GUEST_ROTATION: options.get(
+                        CONF_GUEST_ROTATION, DEFAULT_GUEST_ROTATION
                     ),
                     CONF_QR_THEME: options.get(CONF_QR_THEME, DEFAULT_QR_THEME),
                     CONF_WEBHOOK_ENABLED: enabled,

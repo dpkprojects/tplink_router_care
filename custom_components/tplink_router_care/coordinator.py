@@ -18,6 +18,7 @@ from homeassistant.util import dt as dt_util
 
 from .api import GuestWifi, RouterApi, RouterAuthError, RouterData, RouterError
 from .const import DEFAULT_SCAN_INTERVAL, DOMAIN, UPDATE_TIMEOUT
+from .rotation import GuestPasswordRotator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -49,6 +50,7 @@ class RouterCoordinator(DataUpdateCoordinator[RouterData]):
             update_interval=scan_interval(entry),
         )
         self.api = api
+        self.rotator = GuestPasswordRotator(self)
 
     @callback
     def async_apply_scan_interval(self) -> None:

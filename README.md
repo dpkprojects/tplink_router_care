@@ -77,6 +77,13 @@ in turn. The model it finds is saved, so later polls skip this step.
 - **New guest 5 GHz password** button. Sets a random 8-character password (letters and digits) on
   the 5 GHz guest network. On routers where 2.4 and 5 GHz guest share one password (e.g. Archer
   AXE75), the 2.4 GHz guest password changes too; the router doesn't allow setting them separately.
+- **Automatic guest password rotation** (off by default). Under **Configure → Change guest Wi-Fi
+  password automatically**, pick every 12 hours, every day, every 2 days, every week, every month
+  (30 days) or every 3 months (90 days). Each rotation does the same as the button above, so the
+  password sensor, QR code image and webhook card all update. The first change comes one full
+  interval after you switch it on. The schedule is saved, so it survives restarts; a change that
+  fell due while Home Assistant was off runs a couple of minutes after startup. Pressing the button
+  restarts the clock. A failed attempt is retried every hour until it works.
 - **Guest 5 GHz password** and **Guest 5 GHz SSID** sensors. Show the current guest password and
   network name, so you can read them off the device page.
 - **Guest 5 GHz QR code** image. A Wi-Fi card with a scannable QR code plus the network name and

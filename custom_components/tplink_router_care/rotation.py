@@ -23,7 +23,7 @@ from .const import (
     DATA_GUEST_ROTATED_AT,
     DEFAULT_GUEST_ROTATION,
     ROTATION_MIN_DELAY,
-    ROTATION_RETRY,
+    ROTATION_RETRY_DELAYS,
 )
 
 if TYPE_CHECKING:
@@ -51,11 +51,8 @@ class GuestPasswordRotator:
         # mistaken for "rotation was just switched on".
         self._interval = rotation_interval(self._entry)
         self._unsub: CALLBACK_TYPE | None = None
-
-    @property
-    def _supported(self) -> bool:
-        data = self._coordinator.data
-        return data is not None and data.guest_5g is not None
+        # Failed attempts since the last successful (or abandoned) rotation.
+        self._retries = 0
 
     def _last_rotation(self) -> datetime | None:
         value = self._entry.data.get(DATA_GUEST_ROTATED_AT)
@@ -81,7 +78,7 @@ class GuestPasswordRotator:
         just_enabled = self._interval is None and interval is not None
         self._interval = interval
         self.async_cancel()
-        if interval is None or not self._supported:
+        if interval is None or not self._coordinator.guest_supported:
             return
 
         now = dt_util.utcnow()
@@ -105,16 +102,39 @@ class GuestPasswordRotator:
 
     async def _async_timer_fired(self, _now: datetime) -> None:
         self._unsub = None
+        if self._coordinator.auth_failed:
+            # Waiting for the user to re-enter the password; trying now would
+            # only add another refused login. Check back later.
+            self._arm(dt_util.utcnow() + ROTATION_RETRY_DELAYS[0])
+            return
         try:
             await self.async_rotate_now()
         except Exception as err:  # noqa: BLE001 - keep the schedule alive
+            if self._unsub is not None:
+                return  # rescheduled meanwhile (e.g. options changed)
+            if self._retries < len(ROTATION_RETRY_DELAYS):
+                delay = ROTATION_RETRY_DELAYS[self._retries]
+                self._retries += 1
+                _LOGGER.warning(
+                    "Automatic guest Wi-Fi password change failed, retrying in %s: %s",
+                    delay,
+                    err,
+                )
+                self._arm(dt_util.utcnow() + delay)
+                return
+            # Give up until the next scheduled time. Stops a router that
+            # accepts the write but fails the check from getting (and kicking
+            # guests off) a new password every few hours.
             _LOGGER.warning(
-                "Automatic guest Wi-Fi password change failed, retrying in %s: %s",
-                ROTATION_RETRY,
+                "Automatic guest Wi-Fi password change failed %s times; skipping it "
+                "until the next scheduled change: %s",
+                self._retries + 1,
                 err,
             )
-            if self._unsub is None:
-                self._arm(dt_util.utcnow() + ROTATION_RETRY)
+            self._retries = 0
+            # Restarts the clock (the saved time is when it last started).
+            self._save_rotation(dt_util.utcnow())
+            self.async_schedule()
 
     async def async_rotate_now(self) -> None:
         """Set a new random guest password and restart the rotation clock.
@@ -126,6 +146,7 @@ class GuestPasswordRotator:
         await coordinator.async_set_guest_5g(
             coordinator.api.set_guest_5g_password, generate_password()
         )
+        self._retries = 0
         # Saving updates the entry, which re-runs async_schedule through the
         # update listener; schedule here too so the timer never depends on it.
         self._save_rotation(dt_util.utcnow())

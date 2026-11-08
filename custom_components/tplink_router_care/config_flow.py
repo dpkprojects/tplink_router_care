@@ -39,6 +39,7 @@ from .api import (
     RouterApi,
     RouterAuthError,
     RouterConnectionError,
+    RouterLoginError,
     RouterUnsupportedError,
     normalize_host,
 )
@@ -136,7 +137,7 @@ class TplinkRouterCareConfigFlow(ConfigFlow, domain=DOMAIN):
             return {"base": "cannot_connect"}, None, None
         except RouterAuthError:
             return {"base": "invalid_auth"}, None, None
-        except RouterUnsupportedError:
+        except (RouterUnsupportedError, RouterLoginError):
             return {"base": "login_failed"}, None, None
         except TimeoutError:
             return {"base": "timeout"}, None, None

@@ -50,6 +50,15 @@ class RouterAuthError(RouterError):
     """Router rejected the credentials."""
 
 
+class RouterLoginError(RouterError):
+    """Router refused the login without saying why.
+
+    Can be a wrong password, or someone else holding the router's single admin
+    session. The coordinator only treats it as a wrong password once it keeps
+    happening.
+    """
+
+
 class RouterUnsupportedError(RouterError):
     """No client in the library could talk to this router."""
 
@@ -78,6 +87,9 @@ class RouterData:
     status: Status
     # None if the router doesn't expose the guest_5g form (or reading it failed).
     guest_5g: GuestWifi | None = None
+    # True if reading guest_5g failed on a network error (a glitch, not "this
+    # router has no guest network"); the coordinator keeps the previous value.
+    guest_5g_failed: bool = False
     # When this snapshot was read from the router (UTC); set by the coordinator.
     fetched_at: datetime | None = None
 
@@ -236,7 +248,9 @@ class RouterApi:
         except requests.exceptions.RequestException as err:
             raise RouterConnectionError(str(err)) from err
         except ClientException as err:
-            raise RouterError(str(err)) from err
+            # Network failures were caught above, so the router answered and
+            # refused us: usually a wrong password or a busy admin session.
+            raise RouterLoginError(str(err)) from err
 
     @classmethod
     def _read_guest_5g(
@@ -367,12 +381,21 @@ class RouterApi:
                     _LOGGER.debug("Could not read firmware info", exc_info=True)
             status = router.get_status() if fetch_status else Status()
             guest_5g = None
+            guest_5g_failed = False
             if fetch_status:
                 try:
                     guest_5g = self._read_guest_5g(router)
+                except (requests.exceptions.RequestException, RouterConnectionError):
+                    guest_5g_failed = True
+                    _LOGGER.debug("Network error reading guest 5 GHz Wi-Fi", exc_info=True)
                 except Exception:  # noqa: BLE001 - guest info is optional
                     _LOGGER.debug("Could not read guest 5 GHz Wi-Fi", exc_info=True)
-            return RouterData(firmware=self._firmware, status=status, guest_5g=guest_5g)
+            return RouterData(
+                firmware=self._firmware,
+                status=status,
+                guest_5g=guest_5g,
+                guest_5g_failed=guest_5g_failed,
+            )
         except requests.exceptions.RequestException as err:
             raise RouterConnectionError(str(err)) from err
         except ClientException as err:

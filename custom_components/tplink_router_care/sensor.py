@@ -33,6 +33,8 @@ class RouterSensorDescription(SensorEntityDescription):
     value_fn: Callable[[RouterData], Any]
     # Only create the entity if the router actually reports this value.
     optional: bool = False
+    # Guest network value: created whenever the router has a guest network.
+    guest: bool = False
     # Keep showing the last value when a poll fails instead of going unavailable.
     keep_on_failure: bool = False
 
@@ -74,13 +76,13 @@ SENSORS: tuple[RouterSensorDescription, ...] = (
         key="guest_5g_password",
         translation_key="guest_5g_password",
         value_fn=lambda d: d.guest_5g.password,
-        optional=True,
+        guest=True,
     ),
     RouterSensorDescription(
         key="guest_5g_ssid",
         translation_key="guest_5g_ssid",
         value_fn=lambda d: d.guest_5g.ssid,
-        optional=True,
+        guest=True,
     ),
     RouterSensorDescription(
         key="cpu_usage",
@@ -139,7 +141,8 @@ async def async_setup_entry(
     async_add_entities(
         RouterSensor(coordinator, desc)
         for desc in SENSORS
-        if not desc.optional or _safe_value(desc, coordinator.data) is not None
+        if (not desc.guest or coordinator.guest_supported)
+        and (not desc.optional or _safe_value(desc, coordinator.data) is not None)
     )
 
 

@@ -19,7 +19,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up switches (only if the router exposes the 5 GHz guest network)."""
     coordinator = entry.runtime_data
-    if coordinator.data and coordinator.data.guest_5g is not None:
+    if coordinator.guest_supported:
         async_add_entities([RouterGuest5gSwitch(coordinator)])
 
 

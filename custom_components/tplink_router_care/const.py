@@ -30,12 +30,37 @@ DEFAULT_SCAN_INTERVAL: Final = "60"
 CONF_GUEST_ROTATION: Final = "guest_password_rotation"
 GUEST_ROTATION_OPTIONS: Final = ["0", "12", "24", "48", "168", "720", "2160"]
 DEFAULT_GUEST_ROTATION: Final = "0"
-# Entry data key holding when the guest password was last changed by us (ISO).
+# Entry data key: when the rotation clock last started (ISO), i.e. the last
+# password change made by this integration, or the last abandoned attempt.
 DATA_GUEST_ROTATED_AT: Final = "guest_password_rotated_at"
 # A due rotation never fires sooner than this (e.g. right after startup).
 ROTATION_MIN_DELAY: Final = timedelta(minutes=2)
-# Wait before retrying a failed automatic rotation.
-ROTATION_RETRY: Final = timedelta(hours=1)
+# Waits before each retry of a failed automatic rotation. After the last one
+# the rotation is skipped until the next scheduled time, so a router that
+# accepts the write but fails the check can't get a new password every hour.
+ROTATION_RETRY_DELAYS: Final = (
+    timedelta(hours=1),
+    timedelta(hours=3),
+    timedelta(hours=6),
+)
+# Entry data flag: this router has shown a 5 GHz guest network at least once,
+# so guest entities are created even if reading it fails during startup.
+DATA_GUEST_SUPPORTED: Final = "guest_5g_supported"
+
+# After a failed poll, retry sooner than the configured interval (never later),
+# stepping through these waits; the last one repeats until a poll succeeds.
+POLL_RETRY_DELAYS: Final = (
+    timedelta(minutes=5),
+    timedelta(minutes=15),
+    timedelta(hours=1),
+)
+# Some routers (the Archer C6/AXE75 family among them) report a wrong password
+# the same way as other login problems, such as someone being logged into the
+# web UI. Only ask for a new password after this many refused logins in a row.
+LOGIN_REFUSALS_BEFORE_REAUTH: Final = 3
+# After a guest Wi-Fi change fails or times out, re-read the router after this
+# delay, because the change may have been applied anyway.
+GUEST_RECHECK_DELAY: Final = timedelta(minutes=1)
 
 # Per-HTTP-request timeout handed to the library (seconds).
 REQUEST_TIMEOUT: Final = 10

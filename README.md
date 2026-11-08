@@ -83,7 +83,9 @@ in turn. The model it finds is saved, so later polls skip this step.
   password sensor, QR code image and webhook card all update. The first change comes one full
   interval after you switch it on. The schedule is saved, so it survives restarts; a change that
   fell due while Home Assistant was off runs a couple of minutes after startup. Pressing the button
-  restarts the clock. A failed attempt is retried every hour until it works.
+  restarts the clock. A failed attempt is retried after 1, 3 and 6 hours; if all of those fail
+  too, it waits for the next scheduled change, so a misbehaving router can't end up with a new
+  guest password every hour.
 - **Guest 5 GHz password** and **Guest 5 GHz SSID** sensors. Show the current guest password and
   network name, so you can read them off the device page.
 - **Guest 5 GHz QR code** image. A Wi-Fi card with a scannable QR code plus the network name and
@@ -141,4 +143,12 @@ applies immediately, without a restart.
 - If the router is offline at startup, the entry goes into *retry* mode in the background instead
   of failing. Unexpected library exceptions are caught and reported as failed updates.
 - If the password is wrong, polling stops and HA asks you to re-enter it, so it won't keep
-  failing logins and get you locked out of the router.
+  failing logins and get you locked out of the router. Many models (the Archer C6/AXE75 family
+  among them) report a wrong password the same way as "someone is logged into the web page", so
+  HA only asks after 3 refused logins in a row.
+- A failed poll is retried after 5 minutes, then 15 minutes, then hourly (never later than your
+  chosen interval), so a single glitch doesn't leave stale data for a day or a week.
+- If a guest Wi-Fi change fails or times out, the router is re-read a minute later, because it may
+  have applied the change anyway. That keeps the QR code from showing an old password.
+- A network glitch while reading the guest network keeps the last known values instead of
+  blanking the QR code, and guest entities are still created if that happens during startup.

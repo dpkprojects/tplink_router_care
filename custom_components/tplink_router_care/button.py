@@ -27,7 +27,7 @@ async def async_setup_entry(
         RouterRefreshButton(coordinator),
         RouterRebootButton(coordinator),
     ]
-    if coordinator.data and coordinator.data.guest_5g is not None:
+    if coordinator.guest_supported:
         entities.append(RouterGuest5gPasswordButton(coordinator))
     async_add_entities(entities)
 
